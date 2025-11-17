@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/11" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controller.PinLockController"
+      alignment="CENTER" spacing="30" 
+      style="-fx-background-color: linear-gradient(to bottom, #667eea, #764ba2); -fx-padding: 50;">
+    
+    <!-- 제목 -->
+    <VBox alignment="CENTER" spacing="10">
+        <Label fx:id="titleLabel" text="🔐 PIN 설정" 
+               style="-fx-text-fill: white; -fx-font-size: 28px; -fx-font-weight: bold;"/>
+        <Label fx:id="messageLabel" text="4자리 PIN을 설정해주세요" 
+               style="-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 16px;"/>
+    </VBox>
+    
+    <!-- PIN 입력 필드 -->
+    <VBox alignment="CENTER" spacing="20"
+          style="-fx-background-color: white; -fx-background-radius: 20; -fx-padding: 40;">
+        
+        <HBox spacing="15" alignment="CENTER">
+            <PasswordField fx:id="pinField1" prefWidth="60" prefHeight="60"
+                          style="-fx-font-size: 32px; -fx-alignment: center; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-width: 2; -fx-border-radius: 10;"
+                          promptText="•"/>
+            <PasswordField fx:id="pinField2" prefWidth="60" prefHeight="60"
+                          style="-fx-font-size: 32px; -fx-alignment: center; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-width: 2; -fx-border-radius: 10;"
+                          promptText="•"/>
+            <PasswordField fx:id="pinField3" prefWidth="60" prefHeight="60"
+                          style="-fx-font-size: 32px; -fx-alignment: center; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-width: 2; -fx-border-radius: 10;"
+                          promptText="•"/>
+            <PasswordField fx:id="pinField4" prefWidth="60" prefHeight="60"
+                          style="-fx-font-size: 32px; -fx-alignment: center; -fx-background-radius: 10; -fx-border-color: #ddd; -fx-border-width: 2; -fx-border-radius: 10;"
+                          promptText="•"/>
+        </HBox>
+        
+        <Button fx:id="submitButton" text="확인" onAction="#handleSubmit"
+                style="-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 12 50 12 50; -fx-background-radius: 25; -fx-cursor: hand;"/>
+        
+        <Label fx:id="hintLabel" text="설정된 PIN을 입력하세요"
+               style="-fx-text-fill: #999; -fx-font-size: 13px;"/>
+    </VBox>
+    
+</VBox>

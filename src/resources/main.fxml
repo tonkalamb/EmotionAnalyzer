@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/11" xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="controller.MainController" 
+            style="-fx-background-color: #f5f5f5;">
+    
+    <!-- 상단 헤더 -->
+    <top>
+        <VBox style="-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-padding: 20;">
+            <Label text="💬 감정 분석 &amp; 답변 추천 시스템" 
+                   style="-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;"/>
+            <Label text="받은 메시지의 감정을 AI로 분석하고 적절한 답변을 추천해드립니다" 
+                   style="-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 13px;">
+                <VBox.margin>
+                    <Insets top="5"/>
+                </VBox.margin>
+            </Label>
+        </VBox>
+    </top>
+    
+    <!-- 메인 컨텐츠 -->
+    <center>
+        <TabPane fx:id="tabPane" tabClosingPolicy="UNAVAILABLE" style="-fx-background-color: #f5f5f5;">
+            
+            <!-- 분석 탭 -->
+            <Tab text="📱 메시지 분석">
+                <ScrollPane fitToWidth="true" style="-fx-background-color: #f5f5f5;">
+                    <VBox spacing="20" style="-fx-padding: 20;">
+                        
+                        <!-- 🆕 상대방 선택 영역 -->
+                        <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);">
+                            <Label text="👤 대화 상대" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #667eea;"/>
+                            <HBox spacing="10" alignment="CENTER_LEFT">
+                                <ComboBox fx:id="contactComboBox" 
+                                         promptText="상대방 선택 또는 추가..."
+                                         editable="true"
+                                         prefWidth="250"
+                                         style="-fx-font-size: 14px;"/>
+                                <Button fx:id="addContactButton" 
+                                       text="➕ 새 상대 추가" 
+                                       onAction="#handleAddContact"
+                                       style="-fx-background-color: #667eea; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 8 15 8 15; -fx-background-radius: 15; -fx-cursor: hand;"/>
+                                <Label fx:id="contactCountLabel" 
+                                      text="총 0명"
+                                      style="-fx-font-size: 12px; -fx-text-fill: #999;"/>
+                            </HBox>
+                        </VBox>
+                        
+                        <!-- 입력 영역 -->
+                        <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);">
+                            <Label text="📩 받은 메시지" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            <TextArea fx:id="inputTextArea" 
+                                     promptText="분석할 메시지를 붙여넣어주세요...&#10;&#10;예시:&#10;- 오늘 진짜 너무 기분 좋았어! 모든 게 잘 풀려서 행복해 ㅎㅎ&#10;- 요즘 너무 힘들어... 아무것도 잘 안 되는 것 같아"
+                                     wrapText="true" 
+                                     prefRowCount="4"
+                                     style="-fx-font-size: 14px; -fx-border-color: #ddd; -fx-border-radius: 5; -fx-background-radius: 5;"/>
+                            
+                            <HBox spacing="10" alignment="CENTER">
+                                <Button fx:id="analyzeButton" 
+                                       text="✨ 감정 분석하기" 
+                                       onAction="#handleAnalyze"
+                                       style="-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 10 30 10 30; -fx-background-radius: 20; -fx-cursor: hand;"/>
+                                <ProgressIndicator fx:id="loadingIndicator" prefWidth="30" prefHeight="30"/>
+                            </HBox>
+                        </VBox>
+                        
+                        <!-- 결과 영역 -->
+                        <VBox fx:id="resultBox" spacing="15" visible="false"
+                              style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);">
+                            <Label text="📊 분석 결과" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+                            
+                            <VBox spacing="10">
+                                <Label text="감정 상태" style="-fx-font-size: 13px; -fx-text-fill: gray;"/>
+                                <Label fx:id="emotionLabel" text="기쁨"/>
+                                <Label fx:id="intensityLabel" text="감정 강도: 80%"/>
+                            </VBox>
+                            
+                            <Separator/>
+                            
+                            <VBox spacing="10">
+                                <Label text="💡 추천 답변" style="-fx-font-size: 13px; -fx-text-fill: gray;"/>
+                                <TextArea fx:id="responseTextArea" 
+                                         wrapText="true" 
+                                         editable="true"
+                                         prefRowCount="3"
+                                         style="-fx-font-size: 14px; -fx-background-color: #f9f9f9; -fx-border-radius: 5; -fx-background-radius: 5;"/>
+                                <Label text="✏️ 위 답변을 그대로 사용하거나, 자유롭게 수정하여 사용하세요!" 
+                                       style="-fx-font-size: 11px; -fx-text-fill: #999;"/>
+                            </VBox>
+                        </VBox>
+                        
+                    </VBox>
+                </ScrollPane>
+            </Tab>
+            
+            <!-- 기록 탭 -->
+            <Tab text="📜 분석 기록">
+                <VBox style="-fx-background-color: #f5f5f5;">
+                    <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 15; -fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;">
+                        <Label text="📜 최근 분석 기록 (최대 20개)" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="🗑️ 전체 삭제" 
+                               onAction="#handleClearData"
+                               style="-fx-background-color: #ff4444; -fx-text-fill: white; -fx-padding: 8 20 8 20; -fx-background-radius: 15; -fx-cursor: hand; -fx-font-weight: bold;"/>
+                    </HBox>
+                    
+                    <ScrollPane fitToWidth="true" fitToHeight="true" style="-fx-background-color: #f5f5f5; -fx-background: #f5f5f5;">
+                        <VBox fx:id="historyBox" spacing="10" style="-fx-padding: 15;"/>
+                    </ScrollPane>
+                </VBox>
+            </Tab>
+            
+            <!-- 통계 탭 -->
+            <Tab text="📈 통계">
+                <ScrollPane fitToWidth="true" fitToHeight="true" style="-fx-background-color: #f5f5f5; -fx-background: #f5f5f5;">
+                    <VBox fx:id="statsBox" spacing="20" style="-fx-padding: 20; -fx-background-color: #f5f5f5;"/>
+                </ScrollPane>
+            </Tab>
+            
+        </TabPane>
+    </center>
+    
+    <!-- 하단 푸터 -->
+    <bottom>
+        <HBox alignment="CENTER" style="-fx-padding: 10; -fx-background-color: #fafafa; -fx-border-color: #e0e0e0; -fx-border-width: 1 0 0 0;">
+            <Label text="💡 Powered by Google Gemini AI | Made with ❤️ in JavaFX" 
+                   style="-fx-font-size: 11px; -fx-text-fill: #999;"/>
+        </HBox>
+    </bottom>
+    
+</BorderPane>
