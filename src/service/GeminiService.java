@@ -16,7 +16,7 @@ import java.util.List;
 
 public class GeminiService {
     
-    private static final String API_KEY = "AIzaSyDcG-Xzv_2C_TA6SRHq9I3yHmUMhCNeDUo";
+    private static final String API_KEY = "";
     
     private static final String API_URL = 
 "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent";
