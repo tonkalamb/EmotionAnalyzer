@@ -5,172 +5,244 @@ import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.chart.BarChart;
-import javafx.scene.chart.CategoryAxis;
-import javafx.scene.chart.NumberAxis;
-import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import model.Emotion;
-import model.Message;
-import service.DataManager;
-import service.GeminiService;
+import model.*;
+import service.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class MainController {
-    
-    @FXML private TextArea inputTextArea;
-    @FXML private Button analyzeButton;
-    @FXML private VBox resultBox;
-    @FXML private Label emotionLabel;
-    @FXML private Label intensityLabel;
-    @FXML private TextArea responseTextArea;
-    @FXML private VBox historyBox;
-    @FXML private VBox statsBox;
-    @FXML private TabPane tabPane;
-    @FXML private ProgressIndicator loadingIndicator;
-    @FXML private ComboBox<String> contactComboBox; // 🆕
-    @FXML private Button addContactButton; // 🆕
-    @FXML private Label contactCountLabel; // 🆕
-    
+
+    @FXML
+    private TextArea inputTextArea;
+    @FXML
+    private Button analyzeButton;
+    @FXML
+    private VBox resultBox;
+    @FXML
+    private Label emotionLabel;
+    @FXML
+    private Label intensityLabel;
+    @FXML
+    private TextArea responseTextArea;
+    @FXML
+    private VBox historyBox;
+    @FXML
+    private VBox statsBox;
+    @FXML
+    private TabPane tabPane;
+    @FXML
+    private ProgressIndicator loadingIndicator;
+    @FXML
+    private ComboBox<String> contactComboBox;
+    @FXML
+    private Button addContactButton;
+    @FXML
+    private Label contactCountLabel;
+
     private GeminiService geminiService;
     private DataManager dataManager;
-    
+    private ContactManager contactManager; // 🆕
+
     @FXML
     public void initialize() {
         geminiService = new GeminiService();
         dataManager = new DataManager();
-        
+        contactManager = new ContactManager(); // 🆕
+
         if (loadingIndicator != null) {
             loadingIndicator.setVisible(false);
         }
-        
-        // 🆕 상대방 목록 초기화
+
         updateContactList();
-        
+
         if (!GeminiService.isApiKeySet()) {
             Platform.runLater(() -> {
-                showAlert("⚠️ API 키 설정 필요", 
-                    "Gemini API 키가 설정되지 않았습니다.\n\n" +
-                    "GeminiService.java 파일을 열어서\n" +
-                    "API_KEY 변수에 발급받은 키를 입력해주세요.\n\n" +
-                    "키 발급: https://makersuite.google.com/app/apikey",
-                    Alert.AlertType.WARNING);
+                showAlert("⚠️ API 키 설정 필요",
+                        "Gemini API 키가 설정되지 않았습니다.\n\n" +
+                                "GeminiService.java 파일을 열어서\n" +
+                                "API_KEY 변수에 발급받은 키를 입력해주세요.\n\n" +
+                                "키 발급: https://makersuite.google.com/app/apikey",
+                        Alert.AlertType.WARNING);
             });
         }
-        
+
         loadHistory();
         loadStats();
-        
+
         System.out.println("✅ UI 컨트롤러 초기화 완료");
     }
-    
-    // 🆕 상대방 목록 업데이트
+
     private void updateContactList() {
-        if (contactComboBox == null) return;
-        
-        Set<String> contacts = dataManager.getAllContactNames();
+        if (contactComboBox == null)
+            return;
+
+        // 🔧 수정: ContactManager도 추가!
+        Set<String> contacts = new HashSet<>();
+        contacts.addAll(dataManager.getAllContactNames());
+        contacts.addAll(contactManager.getAllContactNames()); // 🆕 이 줄 추가!
+
         List<String> sortedContacts = new ArrayList<>(contacts);
-        sortedContacts.remove("알 수 없음"); // 기본값 제외
+        sortedContacts.remove("알 수 없음");
         Collections.sort(sortedContacts);
-        
+
         contactComboBox.setItems(FXCollections.observableArrayList(sortedContacts));
-        
-        // 가장 최근 사용한 상대방 자동 선택
+
         if (!sortedContacts.isEmpty() && contactComboBox.getSelectionModel().isEmpty()) {
             List<Message> recent = dataManager.getRecentMessages(1);
             if (!recent.isEmpty()) {
                 contactComboBox.setValue(recent.get(0).getContactName());
             }
         }
-        
-        // 🆕 상대방 수 표시
+
         if (contactCountLabel != null) {
             contactCountLabel.setText(String.format("총 %d명", sortedContacts.size()));
         }
     }
-    
-    // 🆕 새 상대 추가 버튼
+
     @FXML
     private void handleAddContact() {
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("새 상대 추가");
+        // 🆕 MBTI 포함 다이얼로그
+        Dialog<Contact> dialog = new Dialog<>();
+        dialog.setTitle("새 연락처 추가");
         dialog.setHeaderText("👤 새로운 대화 상대를 추가하세요");
-        dialog.setContentText("이름 또는 별명:");
-        
-        Optional<String> result = dialog.showAndWait();
-        result.ifPresent(name -> {
-            String trimmedName = name.trim();
-            if (!trimmedName.isEmpty() && !trimmedName.equals("알 수 없음")) {
-                // ComboBox에 추가
-                if (!contactComboBox.getItems().contains(trimmedName)) {
-                    contactComboBox.getItems().add(trimmedName);
-                    Collections.sort(contactComboBox.getItems());
+
+        ButtonType addButtonType = new ButtonType("추가", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        TextField nameField = new TextField();
+        nameField.setPromptText("이름 또는 별명");
+
+        ComboBox<MBTI> mbtiComboBox = new ComboBox<>();
+        mbtiComboBox.setItems(FXCollections.observableArrayList(MBTI.values()));
+        mbtiComboBox.setValue(MBTI.UNKNOWN);
+        mbtiComboBox.setPromptText("MBTI 선택 (선택사항)");
+
+        TextArea notesArea = new TextArea();
+        notesArea.setPromptText("메모 (성향, 특징 등)");
+        notesArea.setPrefRowCount(3);
+
+        grid.add(new Label("이름:"), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label("MBTI:"), 0, 1);
+        grid.add(mbtiComboBox, 1, 1);
+        grid.add(new Label("메모:"), 0, 2);
+        grid.add(notesArea, 1, 2);
+
+        dialog.getDialogPane().setContent(grid);
+
+        Platform.runLater(() -> nameField.requestFocus());
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == addButtonType) {
+                String name = nameField.getText().trim();
+                if (!name.isEmpty() && !name.equals("알 수 없음")) {
+                    MBTI mbti = mbtiComboBox.getValue();
+                    String notes = notesArea.getText().trim();
+                    return new Contact(name, mbti, notes);
                 }
-                // 자동 선택
-                contactComboBox.setValue(trimmedName);
-                showAlert("추가 완료", 
-                    "'" + trimmedName + "'님이 목록에 추가되었습니다.", 
-                    Alert.AlertType.INFORMATION);
             }
+            return null;
+        });
+
+        Optional<Contact> result = dialog.showAndWait();
+        result.ifPresent(contact -> {
+            contactManager.saveContact(contact);
+            if (!contactComboBox.getItems().contains(contact.getName())) {
+                contactComboBox.getItems().add(contact.getName());
+                Collections.sort(contactComboBox.getItems());
+            }
+            contactComboBox.setValue(contact.getName());
+            updateContactList();
+            showAlert("추가 완료",
+                    "'" + contact.getDisplayInfo() + "'님이 목록에 추가되었습니다.",
+                    Alert.AlertType.INFORMATION);
         });
     }
-    
+
     @FXML
     private void handleAnalyze() {
         String text = inputTextArea.getText().trim();
-        
+
         if (text.isEmpty()) {
             showAlert("입력 오류", "분석할 문장을 입력해주세요.", Alert.AlertType.WARNING);
             return;
         }
-        
+
         if (text.length() > 2000) {
-            showAlert("입력 오류", 
-                "텍스트가 너무 깁니다. (최대 2000자)\n현재: " + text.length() + "자",
-                Alert.AlertType.WARNING);
+            showAlert("입력 오류",
+                    "텍스트가 너무 깁니다. (최대 2000자)\n현재: " + text.length() + "자",
+                    Alert.AlertType.WARNING);
             return;
         }
-        
-        // 🆕 상대방 선택 확인
+
         String contactName = contactComboBox.getValue();
         if (contactName == null || contactName.trim().isEmpty()) {
-            showAlert("상대방 선택", 
-                "대화 상대를 선택하거나 입력해주세요.", 
-                Alert.AlertType.WARNING);
+            showAlert("상대방 선택",
+                    "대화 상대를 선택하거나 입력해주세요.",
+                    Alert.AlertType.WARNING);
             contactComboBox.requestFocus();
             return;
         }
         contactName = contactName.trim();
-        
+
         if (!GeminiService.isApiKeySet()) {
-            showAlert("API 키 오류", 
-                "Gemini API 키가 설정되지 않았습니다.\n" +
-                "GeminiService.java 파일에서 API_KEY를 설정해주세요.",
-                Alert.AlertType.ERROR);
+            showAlert("API 키 오류",
+                    "Gemini API 키가 설정되지 않았습니다.\n" +
+                            "GeminiService.java 파일에서 API_KEY를 설정해주세요.",
+                    Alert.AlertType.ERROR);
             return;
         }
-        
+
+        // 🆕 연락처에서 MBTI 가져오기
+        Contact contact = contactManager.getContact(contactName);
+        if (contact == null) {
+            contact = new Contact(contactName);
+            contactManager.saveContact(contact);
+        }
+
+        final String finalContactName = contactName;
+        final MBTI mbti = contact.getMbti();
+
         setUIEnabled(false);
         if (loadingIndicator != null) {
             loadingIndicator.setVisible(true);
         }
-        
-        final String finalContactName = contactName;
-        
+
         new Thread(() -> {
             try {
-                System.out.println("🔍 감정 분석 시작... (상대: " + finalContactName + ")");
-                Message message = geminiService.analyzeEmotion(text);
+                System.out.println("🔍 감정 분석 시작... (상대: " + finalContactName +
+                        (mbti != MBTI.UNKNOWN ? ", MBTI: " + mbti.getCode() : "") + ")");
+
+                // 🆕 이전 대화 가져오기 (맥락 분석)
+                List<Message> previousMessages = dataManager.getMessagesByContact(finalContactName, 10);
+
+                Message message;
+                if (previousMessages.isEmpty()) {
+                    // 첫 대화 - 맥락 없이 분석
+                    System.out.println("📝 첫 대화입니다. 맥락 없이 분석합니다.");
+                    message = geminiService.analyzeEmotion(text, mbti);
+                } else {
+                    // 이전 대화 있음 - 맥락 포함 분석
+                    String context = buildConversationContext(previousMessages, finalContactName);
+                    System.out.println("📚 이전 대화 " + previousMessages.size() + "개를 참고합니다.");
+                    message = geminiService.analyzeEmotionWithContext(text, context, mbti);
+                }
+
                 message.setContactName(finalContactName);
-                
+
                 Platform.runLater(() -> {
                     displayResult(message);
                     dataManager.saveMessage(message);
-                    updateContactList(); // 🆕 목록 업데이트
+                    updateContactList();
                     loadHistory();
                     loadStats();
                     setUIEnabled(true);
@@ -178,12 +250,12 @@ public class MainController {
                         loadingIndicator.setVisible(false);
                     }
                 });
-                
+
             } catch (Exception e) {
                 Platform.runLater(() -> {
-                    showAlert("분석 오류", 
-                        "감정 분석 중 오류가 발생했습니다:\n\n" + e.getMessage(),
-                        Alert.AlertType.ERROR);
+                    showAlert("분석 오류",
+                            "감정 분석 중 오류가 발생했습니다:\n\n" + e.getMessage(),
+                            Alert.AlertType.ERROR);
                     setUIEnabled(true);
                     if (loadingIndicator != null) {
                         loadingIndicator.setVisible(false);
@@ -192,303 +264,450 @@ public class MainController {
             }
         }).start();
     }
-    
+
     private void displayResult(Message message) {
-        if (message == null) return;
-        
+        if (message == null)
+            return;
+
         Emotion emotion = message.getEmotion();
-        
+
         if (emotionLabel != null) {
             emotionLabel.setText(emotion.getEmoji() + " " + emotion.getKorean());
             emotionLabel.setStyle(String.format(
-                "-fx-background-color: %s; " +
-                "-fx-text-fill: white; " +
-                "-fx-padding: 10; " +
-                "-fx-background-radius: 10; " +
-                "-fx-font-size: 18px; " +
-                "-fx-font-weight: bold;",
-                emotion.getColorCode()));
+                    "-fx-background-color: %s; " +
+                            "-fx-text-fill: white; " +
+                            "-fx-padding: 10; " +
+                            "-fx-background-radius: 10; " +
+                            "-fx-font-size: 18px; " +
+                            "-fx-font-weight: bold;",
+                    emotion.getColorCode()));
         }
-        
+
         if (intensityLabel != null) {
             intensityLabel.setText(String.format(
-                "감정 강도: %d%% (%s)", 
-                message.getIntensityPercent(),
-                message.getIntensityLevel()));
+                    "감정 강도: %d%% (%s)",
+                    message.getIntensityPercent(),
+                    message.getIntensityLevel()));
             intensityLabel.setStyle("-fx-font-size: 14px; -fx-padding: 5;");
         }
-        
+
         if (responseTextArea != null) {
             responseTextArea.setText(message.getRecommendedResponse());
             responseTextArea.setStyle(String.format(
-                "-fx-border-color: %s; " +
-                "-fx-border-width: 2; " +
-                "-fx-border-radius: 5; " +
-                "-fx-padding: 10;",
-                emotion.getColorCode()));
+                    "-fx-border-color: %s; " +
+                            "-fx-border-width: 2; " +
+                            "-fx-border-radius: 5; " +
+                            "-fx-padding: 10;",
+                    emotion.getColorCode()));
         }
-        
+
         if (resultBox != null) {
             resultBox.setVisible(true);
         }
     }
-    
+
     private void loadHistory() {
-        if (historyBox == null) return;
-        
+        if (historyBox == null)
+            return;
+
         historyBox.getChildren().clear();
-        
+
         List<Message> messages = dataManager.getRecentMessages(20);
-        
+
         if (messages.isEmpty()) {
             Label emptyLabel = new Label("📭 아직 분석 기록이 없습니다.\n\n" +
-                "메시지를 입력하고 '감정 분석하기' 버튼을 눌러보세요!");
+                    "메시지를 입력하고 '감정 분석하기' 버튼을 눌러보세요!");
             emptyLabel.setStyle(
-                "-fx-text-fill: gray; " +
-                "-fx-font-size: 14px; " +
-                "-fx-padding: 20; " +
-                "-fx-text-alignment: center;");
+                    "-fx-text-fill: gray; " +
+                            "-fx-font-size: 14px; " +
+                            "-fx-padding: 20; " +
+                            "-fx-text-alignment: center;");
             emptyLabel.setWrapText(true);
             historyBox.getChildren().add(emptyLabel);
             return;
         }
-        
+
         for (Message msg : messages) {
             historyBox.getChildren().add(createMessageCard(msg));
         }
     }
-    
+
     private VBox createMessageCard(Message message) {
         VBox card = new VBox(8);
         card.setPadding(new Insets(12));
         card.setStyle(String.format(
-            "-fx-background-color: %s; " +
-            "-fx-background-radius: 10; " +
-            "-fx-border-color: %s; " +
-            "-fx-border-width: 2; " +
-            "-fx-border-radius: 10; " +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 5, 0, 0, 2);",
-            hexToRgba(message.getEmotion().getColorCode(), 0.08),
-            message.getEmotion().getColorCode()));
-        
+                "-fx-background-color: %s; " +
+                        "-fx-background-radius: 10; " +
+                        "-fx-border-color: %s; " +
+                        "-fx-border-width: 2; " +
+                        "-fx-border-radius: 10; " +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 5, 0, 0, 2);",
+                hexToRgba(message.getEmotion().getColorCode(), 0.08),
+                message.getEmotion().getColorCode()));
+
         HBox header = new HBox(10);
         header.setAlignment(Pos.CENTER_LEFT);
-        
-        Label contactLabel = new Label("👤 " + message.getContactName());
+
+        // 🆕 MBTI 정보 추가
+        Contact contact = contactManager.getContact(message.getContactName());
+        String displayName = message.getContactName();
+        if (contact != null && contact.hasMbti()) {
+            displayName += " (" + contact.getMbti().getCode() + ")";
+        }
+
+        Label contactLabel = new Label("👤 " + displayName);
         contactLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #333; -fx-font-weight: bold;");
-        
+
         Label timeLabel = new Label("🕐 " + message.getFormattedTimestamp());
         timeLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #666;");
-        
-        Label emotionTag = new Label(message.getEmotion().getEmoji() + " " + 
-            message.getEmotion().getKorean() + " " + 
-            message.getIntensityPercent() + "%");
+
+        Label emotionTag = new Label(message.getEmotion().getEmoji() + " " +
+                message.getEmotion().getKorean() + " " +
+                message.getIntensityPercent() + "%");
         emotionTag.setStyle(String.format(
-            "-fx-background-color: %s; " +
-            "-fx-text-fill: white; " +
-            "-fx-padding: 3 10 3 10; " +
-            "-fx-background-radius: 12; " +
-            "-fx-font-size: 11px; " +
-            "-fx-font-weight: bold;",
-            message.getEmotion().getColorCode()));
-        
-        Region spacer = new Region();
+                "-fx-background-color: %s; " +
+                        "-fx-text-fill: white; " +
+                        "-fx-padding: 3 10 3 10; " +
+                        "-fx-background-radius: 12; " +
+                        "-fx-font-size: 11px; " +
+                        "-fx-font-weight: bold;",
+                message.getEmotion().getColorCode()));
+
+        javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        
+
         header.getChildren().addAll(contactLabel, timeLabel, spacer, emotionTag);
-        
+
         Label contentLabel = new Label("💬 " + message.getContent());
         contentLabel.setWrapText(true);
         contentLabel.setStyle(
-            "-fx-font-size: 13px; " +
-            "-fx-text-fill: #333; " +
-            "-fx-padding: 5 0 5 0;");
-        
+                "-fx-font-size: 13px; " +
+                        "-fx-text-fill: #333; " +
+                        "-fx-padding: 5 0 5 0;");
+
         Separator separator = new Separator();
-        
+
         Label responseLabel = new Label("💡 " + message.getRecommendedResponse());
         responseLabel.setWrapText(true);
         responseLabel.setStyle(
-            "-fx-font-size: 12px; " +
-            "-fx-text-fill: #555; " +
-            "-fx-padding: 8; " +
-            "-fx-background-color: rgba(255,255,255,0.5); " +
-            "-fx-background-radius: 5;");
-        
+                "-fx-font-size: 12px; " +
+                        "-fx-text-fill: #555; " +
+                        "-fx-padding: 8; " +
+                        "-fx-background-color: rgba(255,255,255,0.5); " +
+                        "-fx-background-radius: 5;");
+
         card.getChildren().addAll(header, contentLabel, separator, responseLabel);
-        
+
         return card;
     }
-    
+
     private void loadStats() {
-        if (statsBox == null) return;
-        
+        if (statsBox == null)
+            return;
+
         statsBox.getChildren().clear();
-        
+
         int totalCount = dataManager.getTotalMessageCount();
-        
+
         if (totalCount == 0) {
             Label emptyLabel = new Label("📊 아직 통계 데이터가 없습니다.");
             emptyLabel.setStyle(
-                "-fx-text-fill: gray; " +
-                "-fx-font-size: 14px; " +
-                "-fx-padding: 20;");
+                    "-fx-text-fill: gray; " +
+                            "-fx-font-size: 14px; " +
+                            "-fx-padding: 20;");
             statsBox.getChildren().add(emptyLabel);
             return;
         }
-        
+
         VBox overallStats = createOverallStatsBox();
         statsBox.getChildren().add(overallStats);
-        
+
         List<Message> allMessages = dataManager.getAllMessages();
         Map<String, List<Message>> messagesByContact = allMessages.stream()
-            .collect(Collectors.groupingBy(Message::getContactName));
-        
+                .collect(Collectors.groupingBy(Message::getContactName));
+
         List<String> sortedContacts = new ArrayList<>(messagesByContact.keySet());
         sortedContacts.remove("알 수 없음");
         Collections.sort(sortedContacts);
         if (messagesByContact.containsKey("알 수 없음")) {
             sortedContacts.add("알 수 없음");
         }
-        
+
         for (String contactName : sortedContacts) {
             List<Message> contactMessages = messagesByContact.get(contactName);
             VBox contactStatsBox = createContactStatsBox(contactName, contactMessages);
             statsBox.getChildren().add(contactStatsBox);
         }
     }
-    
+
     private VBox createContactStatsBox(String contactName, List<Message> messages) {
         VBox box = new VBox(15);
         box.setPadding(new Insets(20));
         box.setStyle(
-            "-fx-background-color: white; " +
-            "-fx-background-radius: 10; " +
-            "-fx-border-color: #e0e0e0; " +
-            "-fx-border-width: 2; " +
-            "-fx-border-radius: 10; " +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 2);");
-        
-        Label titleLabel = new Label("👤 " + contactName + "님과의 대화");
+                "-fx-background-color: white; " +
+                        "-fx-background-radius: 10; " +
+                        "-fx-border-color: #e0e0e0; " +
+                        "-fx-border-width: 2; " +
+                        "-fx-border-radius: 10; " +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 2);");
+
+        Contact contact = contactManager.getContact(contactName);
+        String displayName = contactName;
+        if (contact != null && contact.hasMbti()) {
+            displayName += " (" + contact.getMbti().getCode() + " " + contact.getMbti().getNickname() + ")";
+        }
+
+        Label titleLabel = new Label("👤 " + displayName + "님과의 대화");
         titleLabel.setStyle(
-            "-fx-font-size: 16px; " +
-            "-fx-font-weight: bold; " +
-            "-fx-text-fill: #667eea;");
-        
+                "-fx-font-size: 16px; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-text-fill: #667eea;");
+
         int count = messages.size();
         double avgIntensity = messages.stream()
-            .mapToDouble(Message::getIntensity)
-            .average()
-            .orElse(0.0);
-        
+                .mapToDouble(Message::getIntensity)
+                .average()
+                .orElse(0.0);
+
         Map<Emotion, Long> emotionCount = messages.stream()
-            .collect(Collectors.groupingBy(Message::getEmotion, Collectors.counting()));
-        
+                .collect(Collectors.groupingBy(Message::getEmotion, Collectors.counting()));
+
         Emotion mostFrequent = emotionCount.entrySet().stream()
-            .max(Map.Entry.comparingByValue())
-            .map(Map.Entry::getKey)
-            .orElse(Emotion.NEUTRAL);
-        
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(Emotion.NEUTRAL);
+
         Label countLabel = new Label("📝 대화 횟수: " + count + "회");
         countLabel.setStyle("-fx-font-size: 13px;");
-        
+
         Label avgLabel = new Label(String.format("📈 평균 감정 강도: %.0f%%", avgIntensity * 100));
         avgLabel.setStyle("-fx-font-size: 13px;");
-        
+
         Label mostLabel = new Label("⭐ 가장 많은 감정: " + mostFrequent.getEmoji() + " " + mostFrequent.getKorean());
         mostLabel.setStyle("-fx-font-size: 13px;");
-        
+
         HBox emotionBars = createMiniEmotionBars(emotionCount, count);
-        
-        box.getChildren().addAll(titleLabel, new Separator(), countLabel, avgLabel, mostLabel, emotionBars);
-        
+
+        VBox profileSection = createProfileSection(contact, contactName, count);
+
+        box.getChildren().addAll(titleLabel, new Separator(), countLabel, avgLabel, mostLabel, emotionBars,
+                profileSection);
+
         return box;
     }
-    
+
     private HBox createMiniEmotionBars(Map<Emotion, Long> emotionCount, int total) {
         HBox box = new HBox(5);
         box.setAlignment(Pos.CENTER_LEFT);
-        
+
         for (Emotion emotion : Emotion.values()) {
             long count = emotionCount.getOrDefault(emotion, 0L);
             if (count > 0) {
                 double percentage = (count / (double) total) * 100;
-                
+
                 VBox bar = new VBox(3);
                 bar.setAlignment(Pos.BOTTOM_CENTER);
                 bar.setMinWidth(40);
-                
+
                 Label emojiLabel = new Label(emotion.getEmoji());
                 emojiLabel.setStyle("-fx-font-size: 14px;");
-                
-                Region colorBar = new Region();
+
+                javafx.scene.layout.Region colorBar = new javafx.scene.layout.Region();
                 colorBar.setPrefWidth(30);
                 colorBar.setPrefHeight(percentage * 1.5);
                 colorBar.setStyle(String.format(
-                    "-fx-background-color: %s; " +
-                    "-fx-background-radius: 5 5 0 0;",
-                    emotion.getColorCode()));
-                
+                        "-fx-background-color: %s; " +
+                                "-fx-background-radius: 5 5 0 0;",
+                        emotion.getColorCode()));
+
                 Label percentLabel = new Label(String.format("%.0f%%", percentage));
                 percentLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #666;");
-                
+
                 bar.getChildren().addAll(emojiLabel, colorBar, percentLabel);
                 box.getChildren().add(bar);
             }
         }
-        
+
         return box;
     }
-    
+
+    private VBox createProfileSection(Contact contact, String contactName, int messageCount) {
+        VBox section = new VBox(10);
+        section.setPadding(new Insets(15, 0, 0, 0));
+
+        HBox header = new HBox(10);
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        Label profileTitle = new Label("🧠 AI 성향 분석");
+        profileTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #667eea;");
+
+        header.getChildren().add(profileTitle);
+
+        if (contact != null && contact.hasAutoProfile()) {
+            // 🔧 Label 대신 TextArea 사용 (스크롤 가능)
+            TextArea profileLabel = new TextArea(contact.getAutoGeneratedProfile());
+            profileLabel.setWrapText(true);
+            profileLabel.setEditable(false); // 🆕
+            profileLabel.setPrefRowCount(6); // 🆕 약 6줄 높이
+            profileLabel.setStyle(
+                    "-fx-font-size: 12px; " +
+                            "-fx-text-fill: #555; " +
+                            "-fx-background-color: #f0f4ff; " +
+                            "-fx-border-color: #667eea; " +
+                            "-fx-border-width: 1; " +
+                            "-fx-border-radius: 8; " +
+                            "-fx-control-inner-background: #f0f4ff;"); // 🆕
+
+            Button regenerateBtn = new Button("🔄 프로필 재생성");
+            regenerateBtn.setStyle(
+                    "-fx-background-color: #667eea; " +
+                            "-fx-text-fill: white; " +
+                            "-fx-font-size: 11px; " +
+                            "-fx-padding: 5 10 5 10; " +
+                            "-fx-background-radius: 5; " +
+                            "-fx-cursor: hand;");
+            regenerateBtn.setOnAction(e -> generateContactProfile(contactName));
+
+            header.getChildren().add(regenerateBtn);
+            section.getChildren().addAll(header, profileLabel);
+
+        } else {
+            if (messageCount >= 5) {
+                Button generateBtn = new Button("✨ AI로 성향 분석하기 (" + messageCount + "개 메시지)");
+                generateBtn.setStyle(
+                        "-fx-background-color: #667eea; " +
+                                "-fx-text-fill: white; " +
+                                "-fx-font-size: 12px; " +
+                                "-fx-padding: 8 15 8 15; " +
+                                "-fx-background-radius: 8; " +
+                                "-fx-cursor: hand;");
+                generateBtn.setOnAction(e -> generateContactProfile(contactName));
+
+                header.getChildren().add(generateBtn);
+                section.getChildren().add(header);
+            } else {
+                Label infoLabel = new Label("최소 5개 이상의 대화가 필요합니다. (현재: " + messageCount + "개)");
+                infoLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #999;");
+                section.getChildren().addAll(header, infoLabel);
+            }
+        }
+
+        return section;
+    }
+
+    private void generateContactProfile(String contactName) {
+        setUIEnabled(false);
+        if (loadingIndicator != null) {
+            loadingIndicator.setVisible(true);
+        }
+
+        new Thread(() -> {
+            try {
+                System.out.println("🧠 프로필 생성 시작: " + contactName);
+
+                List<Message> messages = dataManager.getMessagesByContact(contactName);
+
+                if (messages.size() < 5) {
+                    Platform.runLater(() -> {
+                        showAlert("프로필 생성 불가",
+                                "최소 5개 이상의 대화가 필요합니다.\n현재: " + messages.size() + "개",
+                                Alert.AlertType.WARNING);
+                        setUIEnabled(true);
+                        if (loadingIndicator != null) {
+                            loadingIndicator.setVisible(false);
+                        }
+                    });
+                    return;
+                }
+
+                Contact contact = contactManager.getContact(contactName);
+                if (contact == null) {
+                    contact = new Contact(contactName);
+                    contactManager.saveContact(contact);
+                }
+
+                MBTI mbti = contact.getMbti();
+
+                String profile = geminiService.generateContactProfile(messages, contactName, mbti);
+
+                contactManager.setAutoGeneratedProfile(contactName, profile);
+
+                Platform.runLater(() -> {
+                    loadStats();
+                    setUIEnabled(true);
+                    if (loadingIndicator != null) {
+                        loadingIndicator.setVisible(false);
+                    }
+
+                    showAlert("프로필 생성 완료!",
+                            "'" + contactName + "'님의 성향 분석이 완료되었습니다.\n\n통계 탭에서 확인하세요!",
+                            Alert.AlertType.INFORMATION);
+                });
+
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    showAlert("프로필 생성 오류",
+                            "프로필 생성 중 오류:\n\n" + e.getMessage(),
+                            Alert.AlertType.ERROR);
+                    e.printStackTrace();
+                    setUIEnabled(true);
+                    if (loadingIndicator != null) {
+                        loadingIndicator.setVisible(false);
+                    }
+                });
+            }
+        }).start();
+    }
+
     private VBox createOverallStatsBox() {
         VBox box = new VBox(10);
         box.setPadding(new Insets(20));
         box.setStyle(
-            "-fx-background-color: linear-gradient(to right, #667eea, #764ba2); " +
-            "-fx-background-radius: 10; " +
-            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 10, 0, 0, 2);");
-        
+                "-fx-background-color: linear-gradient(to right, #667eea, #764ba2); " +
+                        "-fx-background-radius: 10; " +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 10, 0, 0, 2);");
+
         Label titleLabel = new Label("📊 전체 감정 분석 통계");
         titleLabel.setStyle(
-            "-fx-font-size: 18px; " +
-            "-fx-font-weight: bold; " +
-            "-fx-text-fill: white;");
-        
+                "-fx-font-size: 18px; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-text-fill: white;");
+
         int totalCount = dataManager.getTotalMessageCount();
         int todayCount = dataManager.getTodayMessageCount();
         double avgIntensity = dataManager.getAverageIntensity();
         Emotion mostFrequent = dataManager.getMostFrequentEmotion();
-        
+
         Label totalLabel = new Label("📝 총 분석 횟수: " + totalCount + "회");
         totalLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: white;");
-        
+
         Label todayLabel = new Label("📅 오늘의 분석: " + todayCount + "회");
         todayLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: white;");
-        
+
         Label avgLabel = new Label(String.format("📈 평균 감정 강도: %.0f%%", avgIntensity * 100));
         avgLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: white;");
-        
+
         Label mostLabel = new Label("⭐ 가장 많은 감정: " + mostFrequent.getEmoji() + " " + mostFrequent.getKorean());
         mostLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: white;");
-        
+
         box.getChildren().addAll(titleLabel, totalLabel, todayLabel, avgLabel, mostLabel);
-        
+
         return box;
     }
-    
+
     @FXML
     private void handleClearData() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("데이터 삭제 확인");
         alert.setHeaderText("모든 데이터를 삭제하시겠습니까?");
         alert.setContentText(
-            "저장된 모든 메시지와 통계가 영구적으로 삭제됩니다.\n" +
-            "이 작업은 되돌릴 수 없습니다!");
-        
+                "저장된 모든 메시지와 통계가 영구적으로 삭제됩니다.\n" +
+                        "이 작업은 되돌릴 수 없습니다!");
+
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 dataManager.clearAllData();
-                updateContactList(); // 🆕 목록 초기화
+                updateContactList();
                 loadHistory();
                 loadStats();
                 if (resultBox != null) {
@@ -497,13 +716,13 @@ public class MainController {
                 if (inputTextArea != null) {
                     inputTextArea.clear();
                 }
-                showAlert("삭제 완료", 
-                    "모든 데이터가 삭제되었습니다.", 
-                    Alert.AlertType.INFORMATION);
+                showAlert("삭제 완료",
+                        "모든 데이터가 삭제되었습니다.",
+                        Alert.AlertType.INFORMATION);
             }
         });
     }
-    
+
     private void setUIEnabled(boolean enabled) {
         if (inputTextArea != null) {
             inputTextArea.setDisable(!enabled);
@@ -518,7 +737,7 @@ public class MainController {
             addContactButton.setDisable(!enabled);
         }
     }
-    
+
     private void showAlert(String title, String content, Alert.AlertType type) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
@@ -526,19 +745,384 @@ public class MainController {
         alert.setContentText(content);
         alert.showAndWait();
     }
-    
+
     private void showAlert(String title, String content) {
         showAlert(title, content, Alert.AlertType.INFORMATION);
     }
-    
+
+    @FXML
+    private void handleImportKakaoCSV() {
+        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+        fileChooser.setTitle("카카오톡 대화 CSV 파일 선택");
+        fileChooser.getExtensionFilters().add(
+                new javafx.stage.FileChooser.ExtensionFilter("CSV 파일", "*.csv"));
+
+        java.io.File file = fileChooser.showOpenDialog(analyzeButton.getScene().getWindow());
+
+        if (file == null) {
+            return;
+        }
+
+        setUIEnabled(false);
+        if (loadingIndicator != null) {
+            loadingIndicator.setVisible(true);
+        }
+
+        new Thread(() -> {
+            try {
+                System.out.println("📁 CSV 파일 파싱 중: " + file.getName());
+
+                KakaoParser.ParseResult result = KakaoParser.parseCSV(file);
+
+                if (result.getTotalMessageCount() == 0) {
+                    Platform.runLater(() -> {
+                        showAlert("파싱 실패",
+                                "CSV 파일에서 메시지를 찾을 수 없습니다.",
+                                Alert.AlertType.WARNING);
+                        setUIEnabled(true);
+                        if (loadingIndicator != null) {
+                            loadingIndicator.setVisible(false);
+                        }
+                    });
+                    return;
+                }
+
+                // 🆕 사용자 선택 다이얼로그
+                Platform.runLater(() -> {
+                    Alert choiceAlert = new Alert(Alert.AlertType.CONFIRMATION);
+                    choiceAlert.setTitle("대화 참여자 확인");
+                    choiceAlert.setHeaderText("📊 CSV 파싱 완료\n총 메시지: " + result.getTotalMessageCount() + "개");
+
+                    String content = String.format(
+                            "대화 참여자:\n" +
+                                    "  • %s: %d개 메시지\n" +
+                                    "  • %s: %d개 메시지\n\n" +
+                                    "이 중에서 '나'는 누구인가요?\n" +
+                                    "(상대방의 메시지를 분석합니다)",
+                            result.getMainUser(),
+                            result.getUserMessageCount().get(result.getMainUser()),
+                            result.getOtherUser(),
+                            result.getUserMessageCount().get(result.getOtherUser()));
+
+                    choiceAlert.setContentText(content);
+
+                    ButtonType user1Button = new ButtonType(result.getMainUser() + " (나)");
+                    ButtonType user2Button = new ButtonType(result.getOtherUser() + " (나)");
+                    ButtonType cancelButton = new ButtonType("취소", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+                    choiceAlert.getButtonTypes().setAll(user1Button, user2Button, cancelButton);
+
+                    Optional<ButtonType> choice = choiceAlert.showAndWait();
+
+                    if (choice.isPresent() && choice.get() != cancelButton) {
+                        String myName;
+                        String otherName;
+
+                        if (choice.get() == user1Button) {
+                            myName = result.getMainUser();
+                            otherName = result.getOtherUser();
+                        } else {
+                            myName = result.getOtherUser();
+                            otherName = result.getMainUser();
+                        }
+
+                        System.out.println("✅ 사용자 선택: 나=" + myName + ", 상대방=" + otherName);
+                        processKakaoMessages(result, otherName, myName);
+                    } else {
+                        setUIEnabled(true);
+                        if (loadingIndicator != null) {
+                            loadingIndicator.setVisible(false);
+                        }
+                    }
+                });
+
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    showAlert("오류",
+                            "CSV 파일 파싱 중 오류:\n\n" + e.getMessage(),
+                            Alert.AlertType.ERROR);
+                    e.printStackTrace();
+                    setUIEnabled(true);
+                    if (loadingIndicator != null) {
+                        loadingIndicator.setVisible(false);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    // 🆕 이미지 OCR 분석
+    @FXML
+    private void handleImageOCR() {
+        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+        fileChooser.setTitle("문자 스크린샷 선택");
+        fileChooser.getExtensionFilters().addAll(
+                new javafx.stage.FileChooser.ExtensionFilter("이미지 파일", "*.png", "*.jpg", "*.jpeg"),
+                new javafx.stage.FileChooser.ExtensionFilter("모든 파일", "*.*"));
+
+        java.io.File file = fileChooser.showOpenDialog(analyzeButton.getScene().getWindow());
+
+        if (file == null) {
+            return;
+        }
+
+        // 상대방 선택 확인
+        String contactName = contactComboBox.getValue();
+        if (contactName == null || contactName.trim().isEmpty()) {
+            showAlert("상대방 선택",
+                    "대화 상대를 먼저 선택해주세요.",
+                    Alert.AlertType.WARNING);
+            contactComboBox.requestFocus();
+            return;
+        }
+        contactName = contactName.trim();
+
+        // MBTI 가져오기
+        Contact contact = contactManager.getContact(contactName);
+        if (contact == null) {
+            contact = new Contact(contactName);
+            contactManager.saveContact(contact);
+        }
+
+        final String finalContactName = contactName;
+        final MBTI mbti = contact.getMbti();
+
+        setUIEnabled(false);
+        if (loadingIndicator != null) {
+            loadingIndicator.setVisible(true);
+        }
+
+        new Thread(() -> {
+            try {
+                System.out.println("📷 이미지 OCR 분석 시작: " + file.getName());
+
+                // OCR로 텍스트 추출
+                String base64Image = geminiService.encodeImageToBase64(file);
+                String extractedText = geminiService.extractTextFromImage(base64Image);
+                
+                System.out.println("📝 추출된 전체 대화:\n" + extractedText);
+                
+                // 상대방 메시지만 추출
+                String targetMessage = parseTargetMessage(extractedText, finalContactName);
+                
+                if (targetMessage == null || targetMessage.trim().isEmpty()) {
+                    Platform.runLater(() -> {
+                        showAlert("메시지 추출 실패", 
+                            "상대방의 메시지를 찾을 수 없습니다.\n\n추출된 내용:\n" + extractedText,
+                            Alert.AlertType.WARNING);
+                        setUIEnabled(true);
+                        if (loadingIndicator != null) {
+                            loadingIndicator.setVisible(false);
+                        }
+                    });
+                    return;
+                }
+                
+                System.out.println("🎯 추출된 상대방 메시지: " + targetMessage);
+                
+                // 감정 분석
+                Message message = geminiService.analyzeEmotion(targetMessage, mbti);
+                message.setContactName(finalContactName);
+
+                Platform.runLater(() -> {
+                    displayResult(message);
+                    dataManager.saveMessage(message);
+                    updateContactList();
+                    loadHistory();
+                    loadStats();
+                    setUIEnabled(true);
+                    if (loadingIndicator != null) {
+                        loadingIndicator.setVisible(false);
+                    }
+
+                    showAlert("OCR 분석 완료!",
+                            "이미지에서 텍스트를 추출하여 분석했습니다.\n\n" +
+                                    "추출된 내용: " + message.getContent(),
+                            Alert.AlertType.INFORMATION);
+                });
+
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    showAlert("OCR 분석 오류",
+                            "이미지 분석 중 오류가 발생했습니다:\n\n" + e.getMessage(),
+                            Alert.AlertType.ERROR);
+                    e.printStackTrace();
+                    setUIEnabled(true);
+                    if (loadingIndicator != null) {
+                        loadingIndicator.setVisible(false);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    // 🆕 추출된 대화에서 상대방 메시지만 파싱
+    private String parseTargetMessage(String extractedText, String contactName) {
+        if (extractedText == null || extractedText.trim().isEmpty()) {
+            return null;
+        }
+        
+        String[] lines = extractedText.split("\n");
+        String lastOtherMessage = null;
+        
+        for (String line : lines) {
+            line = line.trim();
+            
+            // [상대방] 형식
+            if (line.startsWith("[상대방]")) {
+                lastOtherMessage = line.substring(5).trim();
+            }
+            // [나] 는 건너뛰기
+            else if (line.startsWith("[나]")) {
+                continue;
+            }
+            // 구분 없이 텍스트만 있는 경우 (마지막 메시지로 간주)
+            else if (!line.isEmpty() && !line.startsWith("[")) {
+                lastOtherMessage = line;
+            }
+        }
+        
+        return lastOtherMessage;
+    }
+
+    private void processKakaoMessages(KakaoParser.ParseResult result, String contactName, String myName) {
+        new Thread(() -> {
+            try {
+                // 전체 메시지 가져오기
+                List<KakaoParser.KakaoMessage> allMessages = result.getMessages();
+
+                System.out.println("📨 전체 메시지: " + allMessages.size() + "개");
+
+                // 연락처 확인/생성
+                Contact contact = contactManager.getContact(contactName);
+                if (contact == null) {
+                    contact = new Contact(contactName);
+                    contactManager.saveContact(contact);
+                }
+                final MBTI mbti = contact.getMbti();
+
+                // 🆕 대화 맥락 생성 (최근 20개 또는 전체)
+                int contextCount = Math.min(20, allMessages.size());
+                String conversationContext = KakaoParser.toConversationContext(
+                        allMessages, contextCount, myName, contactName);
+
+                // 🆕 마지막 상대방 메시지 찾기
+                KakaoParser.KakaoMessage lastMessage = null;
+                for (int i = allMessages.size() - 1; i >= 0; i--) {
+                    KakaoParser.KakaoMessage msg = allMessages.get(i);
+                    if (msg.getUser().equals(contactName)) {
+                        lastMessage = msg;
+                        break;
+                    }
+                }
+
+                if (lastMessage == null) {
+                    Platform.runLater(() -> {
+                        showAlert("분석 실패",
+                                "상대방의 메시지를 찾을 수 없습니다.",
+                                Alert.AlertType.WARNING);
+                        setUIEnabled(true);
+                        if (loadingIndicator != null) {
+                            loadingIndicator.setVisible(false);
+                        }
+                    });
+                    return;
+                }
+
+                final KakaoParser.KakaoMessage finalLastMessage = lastMessage;
+
+                System.out.println("🎯 마지막 상대방 메시지: " + lastMessage.getMessage());
+                System.out.println("📚 대화 맥락 (" + contextCount + "개 메시지):");
+                System.out.println(conversationContext);
+
+                // 🆕 맥락 기반 분석 (마지막 메시지만)
+                Message analyzedMessage = geminiService.analyzeEmotionWithContext(
+                        finalLastMessage.getMessage(),
+                        conversationContext,
+                        mbti);
+                analyzedMessage.setContactName(contactName);
+                analyzedMessage.setTimestamp(finalLastMessage.getDateTime());
+
+                dataManager.saveMessage(analyzedMessage);
+
+                Platform.runLater(() -> {
+                    updateContactList();
+                    loadHistory();
+                    loadStats();
+
+                    // 결과 표시
+                    displayResult(analyzedMessage);
+
+                    setUIEnabled(true);
+                    if (loadingIndicator != null) {
+                        loadingIndicator.setVisible(false);
+                    }
+
+                    showAlert("가져오기 완료!",
+                            String.format("📊 전체 대화: %d개 메시지\n" +
+                                    "🎯 마지막 메시지 분석 완료!\n\n" +
+                                    "감정: %s %s (%d%%)\n" +
+                                    "추천 답변이 준비되었습니다.",
+                                    allMessages.size(),
+                                    analyzedMessage.getEmotion().getEmoji(),
+                                    analyzedMessage.getEmotion().getKorean(),
+                                    analyzedMessage.getIntensityPercent()),
+                            Alert.AlertType.INFORMATION);
+                });
+
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    showAlert("오류",
+                            "메시지 처리 중 오류:\n\n" + e.getMessage(),
+                            Alert.AlertType.ERROR);
+                    e.printStackTrace();
+                    setUIEnabled(true);
+                    if (loadingIndicator != null) {
+                        loadingIndicator.setVisible(false);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    // 🆕 이전 대화를 맥락 문자열로 변환
+    private String buildConversationContext(List<Message> messages, String contactName) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("이전 대화 맥락 (최근 ").append(messages.size()).append("개):\n\n");
+
+        for (int i = 0; i < messages.size(); i++) {
+            Message msg = messages.get(i);
+
+            // 상대방이 한 말
+            sb.append(String.format("%d. [%s] %s: \"%s\"\n",
+                    i + 1,
+                    msg.getFormattedTimestamp(),
+                    contactName,
+                    msg.getContent()));
+
+            // 감정 분석 결과
+            sb.append(String.format("   └ 감정: %s (%d%%)\n",
+                    msg.getEmotion().getKorean(),
+                    msg.getIntensityPercent()));
+
+            // 내가 답한 내용
+            sb.append(String.format("   └ 나의 답변: \"%s\"\n\n",
+                    msg.getRecommendedResponse()));
+        }
+
+        sb.append("위 대화를 참고하여 지금 받은 메시지를 분석하세요.\n");
+
+        return sb.toString();
+    }
+
     private String hexToRgba(String hex, double alpha) {
         try {
             Color color = Color.web(hex);
             return String.format("rgba(%d, %d, %d, %.2f)",
-                (int)(color.getRed() * 255),
-                (int)(color.getGreen() * 255),
-                (int)(color.getBlue() * 255),
-                alpha);
+                    (int) (color.getRed() * 255),
+                    (int) (color.getGreen() * 255),
+                    (int) (color.getBlue() * 255),
+                    alpha);
         } catch (Exception e) {
             return "rgba(128, 128, 128, " + alpha + ")";
         }

@@ -13,7 +13,7 @@
         <VBox style="-fx-background-color: linear-gradient(to right, #667eea, #764ba2); -fx-padding: 20;">
             <Label text="💬 감정 분석 &amp; 답변 추천 시스템" 
                    style="-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;"/>
-            <Label text="받은 메시지의 감정을 AI로 분석하고 적절한 답변을 추천해드립니다 (MBTI 기반 분석 + 카카오톡 가져오기 지원!)" 
+            <Label text="받은 메시지의 감정을 AI로 분석하고 적절한 답변을 추천해드립니다 (MBTI 기반 분석 지원!)" 
                    style="-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 13px;">
                 <VBox.margin>
                     <Insets top="5"/>
@@ -31,21 +31,7 @@
                 <ScrollPane fitToWidth="true" style="-fx-background-color: #f5f5f5;">
                     <VBox spacing="20" style="-fx-padding: 20;">
                         
-                        <!-- 🆕 카카오톡 가져오기 버튼 -->
-                        <HBox spacing="10" alignment="CENTER" style="-fx-background-color: #fff3cd; -fx-padding: 15; -fx-background-radius: 10; -fx-border-color: #ffc107; -fx-border-width: 2; -fx-border-radius: 10;">
-                            <Label text="📁" style="-fx-font-size: 24px;"/>
-                            <VBox spacing="5" HBox.hgrow="ALWAYS">
-                                <Label text="카카오톡 대화 내보내기 CSV 파일을 가져와 자동 분석하세요!" 
-                                       style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #856404;"/>
-                                <Label text="💡 카카오톡 → 대화방 → ⋮ → 대화 내보내기 → CSV 선택" 
-                                       style="-fx-font-size: 11px; -fx-text-fill: #856404;"/>
-                            </VBox>
-                            <Button text="📂 CSV 파일 가져오기" 
-                                   onAction="#handleImportKakaoCSV"
-                                   style="-fx-background-color: #ffc107; -fx-text-fill: #856404; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 10 20 10 20; -fx-background-radius: 15; -fx-cursor: hand;"/>
-                        </HBox>
-                        
-                        <!-- 상대방 선택 영역 (MBTI 포함) -->
+                        <!-- 🆕 상대방 선택 영역 (MBTI 포함) -->
                         <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);">
                             <Label text="👤 대화 상대 (MBTI 기반 분석)" 
                                    style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #667eea;"/>
@@ -66,20 +52,6 @@
                             <Label text="💡 MBTI를 설정하면 같은 말도 다르게 해석해요! (예: INFP의 '괜찮아' ≠ ESTJ의 '괜찮아')" 
                                    style="-fx-font-size: 11px; -fx-text-fill: #999; -fx-wrap-text: true;"/>
                         </VBox>
-                        
-                        <!-- 🆕 이미지 OCR 영역 -->
-                        <HBox spacing="10" alignment="CENTER" style="-fx-background-color: #e8f5e9; -fx-padding: 15; -fx-background-radius: 10; -fx-border-color: #4caf50; -fx-border-width: 2; -fx-border-radius: 10;">
-                            <Label text="📷" style="-fx-font-size: 24px;"/>
-                            <VBox spacing="5" HBox.hgrow="ALWAYS">
-                                <Label text="문자 스크린샷을 업로드하여 자동으로 분석하세요!" 
-                                       style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #2e7d32;"/>
-                                <Label text="💡 이미지에서 텍스트를 추출하여 감정을 분석합니다" 
-                                       style="-fx-font-size: 11px; -fx-text-fill: #2e7d32;"/>
-                            </VBox>
-                            <Button text="📷 스크린샷 분석" 
-                                   onAction="#handleImageOCR"
-                                   style="-fx-background-color: #4caf50; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 10 20 10 20; -fx-background-radius: 15; -fx-cursor: hand;"/>
-                        </HBox>
                         
                         <!-- 입력 영역 -->
                         <VBox spacing="10" style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);">
@@ -158,7 +130,7 @@
     <!-- 하단 푸터 -->
     <bottom>
         <HBox alignment="CENTER" style="-fx-padding: 10; -fx-background-color: #fafafa; -fx-border-color: #e0e0e0; -fx-border-width: 1 0 0 0;">
-            <Label text="💡 Powered by Google Gemini AI | MBTI 기반 감정 분석 | 카카오톡 CSV 가져오기 | Made with ❤️ in JavaFX" 
+            <Label text="💡 Powered by Google Gemini AI | MBTI 기반 감정 분석 | Made with ❤️ in JavaFX" 
                    style="-fx-font-size: 11px; -fx-text-fill: #999;"/>
         </HBox>
     </bottom>

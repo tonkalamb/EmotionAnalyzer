@@ -64,6 +64,23 @@ public class DataManager {
             .collect(Collectors.toList());
     }
     
+    // 🆕 상대방별 메시지 조회 (최근 N개만)
+    public List<Message> getMessagesByContact(String contactName, int limit) {
+        if (contactName == null || contactName.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        List<Message> allMessages = messageHistory.stream()
+            .filter(msg -> msg.getContactName().equals(contactName))
+            .collect(Collectors.toList());
+        
+        // 최근 limit개만 반환
+        int size = allMessages.size();
+        int startIndex = Math.max(0, size - limit);
+        
+        return new ArrayList<>(allMessages.subList(startIndex, size));
+    }
+    
     // 🆕 모든 상대방 이름 목록
     public Set<String> getAllContactNames() {
         return messageHistory.stream()
