@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+
+<HBox xmlns="http://javafx.com/javafx/21" 
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controller.PinLockController"
+      prefWidth="900" prefHeight="600"
+      style="-fx-background-color: white;">
+    
+    <!-- 왼쪽 영역: 이미지 -->
+    <VBox alignment="CENTER" spacing="0" style="-fx-background-color: white;">
+        <ImageView fitWidth="420" preserveRatio="true">
+            <image>
+                <Image url="@images/pin_left_panel.png"/>
+            </image>
+        </ImageView>
+    </VBox>
+    
+    <!-- 오른쪽 영역: PIN 입력 -->
+    <VBox alignment="CENTER" HBox.hgrow="ALWAYS" 
+          style="-fx-background-color: linear-gradient(to bottom, #7B81D8, #9896D6); -fx-padding: 60;">
+        
+        <!-- PIN 입력 카드 -->
+        <VBox alignment="CENTER" spacing="45" maxWidth="440"
+              style="-fx-background-color: white; -fx-background-radius: 35; -fx-padding: 65 55 65 55; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 30, 0, 0, 10);">
+            
+            <!-- 제목 - 크게 -->
+            <Label text="PIN 입력" 
+                   style="-fx-font-family: 'Apple SD Gothic Neo'; -fx-font-size: 52px; -fx-font-weight: bold; -fx-text-fill: #1a1a1a;"/>
+            
+            <!-- PIN 입력 필드 4개 -->
+            <HBox spacing="16" alignment="CENTER">
+                <TextField fx:id="pinBox1" 
+                          prefWidth="72" prefHeight="72"
+                          style="-fx-font-size: 50px; -fx-alignment: center; -fx-background-radius: 22; -fx-border-radius: 22; -fx-border-color: #DDDDDD; -fx-border-width: 2; -fx-background-color: white; -fx-text-fill: #333333; -fx-padding: 0;"/>
+                <TextField fx:id="pinBox2" 
+                          prefWidth="72" prefHeight="72"
+                          style="-fx-font-size: 50px; -fx-alignment: center; -fx-background-radius: 22; -fx-border-radius: 22; -fx-border-color: #DDDDDD; -fx-border-width: 2; -fx-background-color: white; -fx-text-fill: #333333; -fx-padding: 0;"/>
+                <TextField fx:id="pinBox3" 
+                          prefWidth="72" prefHeight="72"
+                          style="-fx-font-size: 50px; -fx-alignment: center; -fx-background-radius: 22; -fx-border-radius: 22; -fx-border-color: #DDDDDD; -fx-border-width: 2; -fx-background-color: white; -fx-text-fill: #333333; -fx-padding: 0;"/>
+                <TextField fx:id="pinBox4" 
+                          prefWidth="72" prefHeight="72"
+                          style="-fx-font-size: 50px; -fx-alignment: center; -fx-background-radius: 22; -fx-border-radius: 22; -fx-border-color: #DDDDDD; -fx-border-width: 2; -fx-background-color: white; -fx-text-fill: #333333; -fx-padding: 0;"/>
+            </HBox>
+            
+            <!-- 확인 버튼 -->
+            <Button text="확인" 
+                   onAction="#handleSubmit"
+                   prefWidth="340" prefHeight="56"
+                   style="-fx-font-family: 'Apple SD Gothic Neo'; -fx-background-color: linear-gradient(to right, #5B6FEE, #8B7FDB); -fx-text-fill: white; -fx-font-size: 19px; -fx-font-weight: bold; -fx-background-radius: 28; -fx-cursor: hand;"/>
+            
+            <!-- 하단 안내 -->
+            <Label text="PIN을 입력하세요" 
+                   style="-fx-font-family: 'Apple SD Gothic Neo'; -fx-font-size: 15px; -fx-text-fill: #BBBBBB;"/>
+            
+        </VBox>
+        
+    </VBox>
+    
+</HBox>

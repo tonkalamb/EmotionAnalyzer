@@ -1,0 +1,53 @@
+/* 전체 폰트 */
+.root {
+    -fx-font-family: "Apple SD Gothic Neo", "맑은 고딕", "Malgun Gothic", sans-serif;
+}
+
+/* PIN 제목 - 훨씬 더 크게 */
+.pin-title-large {
+    -fx-font-size: 48px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1a1a1a;
+}
+
+/* PIN 입력 박스 - 원 크게, 가운데 정렬 */
+.pin-box-round {
+    -fx-font-size: 44px;
+    -fx-alignment: center;
+    -fx-background-radius: 22;
+    -fx-border-radius: 22;
+    -fx-border-color: #DDDDDD;
+    -fx-border-width: 2;
+    -fx-background-color: white;
+    -fx-text-fill: #333333;
+    -fx-padding: 0;
+}
+
+.pin-box-round:focused {
+    -fx-border-color: #5B97EE;
+    -fx-border-width: 3;
+}
+
+/* 확인 버튼 */
+.pin-button-round {
+    -fx-background-color: linear-gradient(to right, #5B6FEE, #8B7FDB);
+    -fx-text-fill: white;
+    -fx-font-size: 19px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 28;
+    -fx-cursor: hand;
+}
+
+.pin-button-round:hover {
+    -fx-opacity: 0.95;
+}
+
+.pin-button-round:pressed {
+    -fx-opacity: 0.9;
+}
+
+/* 하단 안내 */
+.pin-hint {
+    -fx-font-size: 15px;
+    -fx-text-fill: #BBBBBB;
+}
